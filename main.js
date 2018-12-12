@@ -1,37 +1,49 @@
 const debug = printErr;
-let turnActions;
+let turnAction;
 
 function printObj(key, object) {
     printErr(`${key} : ${JSON.stringify(object, null, 2)}`);
 }
 
-function printMap(map) {
-    map.forEach((value, key) => debug(`[${key}] : ${value}`));
-}
-
-function getBoard() {
-    const board = new Map();
-    for (let i = 0; i < 7; i++) {
-        const inputs = readline().split(' ');
-        for (let j = 0; j < 7; j++) {
-            const tile = inputs[j];
-            board.set([i, j], tile);
+class Board {
+    constructor() {
+        this.tiles = new Map();
+        for (let i = 0; i < 7; i++) {
+            const inputs = readline().split(' ');
+            for (let j = 0; j < 7; j++) {
+                const tile = inputs[j];
+                this.set([j, i], tile);
+            }
         }
     }
-    return board;
+    get(key) {
+        return this.tiles.get(JSON.stringify(key));
+    }
+    set(key, value) {
+        this.tiles.set(JSON.stringify(key), value);
+    }
+    print() {
+        this.tiles.forEach((value, key) => debug(`${key} : ${value}`));
+    }
+}
+
+class Player {
+    constructor(inputs) {
+        this.questsCount = parseInt(inputs[0]);
+        this.x = parseInt(inputs[1]);
+        this.y = parseInt(inputs[2]);
+        this.tile = inputs[3];
+    }
+    get coord() {
+        return [this.x, this.y];
+    }
 }
 
 function getPlayers() {
     const players = [];
     for (let i = 0; i < 2; i++) {
         const inputs = readline().split(' ');
-        const player = {
-            numCard: parseInt(inputs[0]),
-            x: parseInt(inputs[1]),
-            y: parseInt(inputs[2]),
-            tile: inputs[3],
-        };
-        players.push(player);
+        players.push(new Player(inputs));
     }
     return players;
 }
@@ -66,11 +78,69 @@ function getQuests() {
     return [myQuests, oppQuests];
 }
 
+function hasPath(tile, direction) {
+    switch(direction) {
+        case 'top':
+            return parseInt(tile[0]);
+        case 'right':
+            return parseInt(tile[1]);
+        case 'bot':
+            return parseInt(tile[2]);
+        case 'left':
+            return parseInt(tile[3]);
+        default:
+            return false;
+    }
+}
+
+function getPushAction(gameState) {
+    const directions = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+    const randDirection = directions[Math.floor(Math.random() * 4)];
+    const randId = Math.floor(Math.random() * 7);
+    return {
+        id: randId,
+        direction: randDirection,
+    };
+}
+
+function getMoveAction(gameState) {
+    const move = {
+        directions: [],
+    };
+    const { board, player } = gameState;
+    printObj('coord', player.coord);
+    printObj('tile', board.get([0, 0]));
+    if (hasPath(player.tile, 'right')) {
+        move.directions.push('RIGHT');
+        debug('RIGHT');
+    }
+    return move;
+}
+
+function think(gameState) {
+    if (gameState.turnType === 'PUSH') {
+        turnAction = getPushAction(gameState);
+    } else {
+        turnAction = getMoveAction(gameState);
+    }
+}
+
+function act(turnType) {
+    if (turnType === 'PUSH') {
+        const pushQuery = `PUSH ${turnAction.id} ${turnAction.direction}`;
+        print(pushQuery);
+    }
+    if (turnType === 'MOVE') {
+        const moveQuery = turnAction.directions.length ? `MOVE ${turnAction.directions.join(' ')}` : 'PASS';
+        print(moveQuery);
+    }
+}
+
 // game loop
 while (true) {
-    turnActions = [];
+    turnAction = { push: {}, move: {} };
     const turnType = parseInt(readline()) ? 'MOVE' : 'PUSH';
-    const board = getBoard();
+    const board = new Board();
     const [player, opponent] = getPlayers();
     const [myItems, oppItems] = getItems();
     const [myQuests, oppQuests] = getQuests();
@@ -86,11 +156,8 @@ while (true) {
     };
 
     printObj('gameState', gameState);
-    printMap(gameState.board);
+    gameState.board.print();
 
-    if (gameState.turnType === 'PUSH') {
-        print('PUSH 0 LEFT'); // PUSH <id> <direction> | MOVE <direction> | PASS
-    } else {
-        print('PASS');
-    }
+    think(gameState);
+    act(turnType);
 }

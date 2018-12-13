@@ -106,6 +106,10 @@ class Board {
                 return false;
         }
     }
+    getValidMoves(coord) {
+        const tile = this.get(coord);
+        return tile.directions.filter(dir => this.validMove(coord, dir));
+    }
 }
 
 class Player {
@@ -174,17 +178,11 @@ function getMoveAction(gameState) {
     };
     const { board, player } = gameState;
     const coord = player.coord;
-    const playerTile = board.get(coord);
-    const directions = playerTile.directions;
-    const chosenDirection = directions[Math.floor(Math.random() * playerTile.directionCount)];
-    printObj('coord', coord.value);
-    printObj('playerTile', playerTile);
-    if (board.validMove(coord, chosenDirection)) {
-        move.directions.push(chosenDirection);
-        debug(chosenDirection);
-    } else {
-        debug(`${chosenDirection} is invalid !`);
-    }
+    const directions = board.getValidMoves(coord);
+    printObj('available directions', directions);
+    const chosenDirection = directions[Math.floor(Math.random() * directions.length)];
+    move.directions.push(chosenDirection);
+    debug(chosenDirection);
     return move;
 }
 

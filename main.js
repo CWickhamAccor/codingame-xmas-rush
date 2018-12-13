@@ -5,39 +5,119 @@ function printObj(key, object) {
     printErr(`${key} : ${JSON.stringify(object, null, 2)}`);
 }
 
+class Coord {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+    get value() {
+        return [this.x, this.y];
+    }
+    get up() {
+        const y = this.y > 0 ? this.y - 1 : 6;
+        return [this.x, y];
+    }
+    get down() {
+        const y = this.y < 6 ? this.y + 1 : 0;
+        return [this.x, y];
+    }
+    get left() {
+        const x = this.x > 0 ? this.x - 1 : 6;
+        return [x, this.y];
+    }
+    get right() {
+        const x = this.x < 6 ? this.x + 1 : 0;
+        return [x, this.y];
+    }
+    toString() {
+        return this.value;
+    }
+}
+
+class Tile {
+    constructor(input) {
+        this._value = input;
+        this._directions = [];
+        this._directionCount = 0;
+    }
+    get directions() {
+        if (this._directions.length > 0) {
+            return this._directions;
+        }
+        ['UP', 'RIGHT', 'DOWN', 'LEFT'].forEach((dir, i) => {
+            if (parseInt(this._value[i])) {
+                this._directions.push(dir);
+            }
+        });
+        return this._directions;
+    }
+    get directionCount() {
+        return this._directionCount ?
+            this._directionCount : this.directions.length;
+    }
+    get value() {
+        return this._value;
+    }
+    toString() {
+        return this._value.toString();
+    }
+}
+
 class Board {
     constructor() {
         this.tiles = new Map();
         for (let i = 0; i < 7; i++) {
             const inputs = readline().split(' ');
             for (let j = 0; j < 7; j++) {
-                const tile = inputs[j];
-                this.set([j, i], tile);
+                const tile = new Tile(inputs[j]);
+                const coord = new Coord(j, i);
+                this.set(coord, tile);
             }
         }
     }
     get(key) {
+        if (key.value) {
+            return this.tiles.get(JSON.stringify(key.value));
+        }
         return this.tiles.get(JSON.stringify(key));
     }
     set(key, value) {
-        this.tiles.set(JSON.stringify(key), value);
+        if (key.value) {
+            this.tiles.set(JSON.stringify(key.value), value);
+        } else {
+            this.tiles.set(JSON.stringify(key), value);
+        }
     }
     print() {
         this.tiles.forEach((value, key) => debug(`${key} : ${value}`));
+    }
+    validMove(coord, direction) {
+        switch (direction) {
+            case 'UP':
+                return this.get(coord.up).directions.includes('DOWN');
+            case 'RIGHT':
+                return this.get(coord.right).directions.includes('LEFT');
+            case 'DOWN':
+                return this.get(coord.down).directions.includes('UP');
+            case 'LEFT':
+                return this.get(coord.left).directions.includes('RIGHT');
+            default:
+                debug('ERROR, unknown direction');
+                return false;
+        }
     }
 }
 
 class Player {
     constructor(inputs) {
         this.questsCount = parseInt(inputs[0]);
-        this.x = parseInt(inputs[1]);
-        this.y = parseInt(inputs[2]);
-        this.tile = inputs[3];
-    }
-    get coord() {
-        return [this.x, this.y];
+        const x = parseInt(inputs[1]);
+        const y = parseInt(inputs[2]);
+        this.coord = new Coord(x, y);
+        this.tile = new Tile(inputs[3]);
     }
 }
+
 
 function getPlayers() {
     const players = [];
@@ -78,21 +158,6 @@ function getQuests() {
     return [myQuests, oppQuests];
 }
 
-function hasPath(tile, direction) {
-    switch(direction) {
-        case 'top':
-            return parseInt(tile[0]);
-        case 'right':
-            return parseInt(tile[1]);
-        case 'bot':
-            return parseInt(tile[2]);
-        case 'left':
-            return parseInt(tile[3]);
-        default:
-            return false;
-    }
-}
-
 function getPushAction(gameState) {
     const directions = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
     const randDirection = directions[Math.floor(Math.random() * 4)];
@@ -108,11 +173,17 @@ function getMoveAction(gameState) {
         directions: [],
     };
     const { board, player } = gameState;
-    printObj('coord', player.coord);
-    printObj('tile', board.get([0, 0]));
-    if (hasPath(player.tile, 'right')) {
-        move.directions.push('RIGHT');
-        debug('RIGHT');
+    const coord = player.coord;
+    const playerTile = board.get(coord);
+    const directions = playerTile.directions;
+    const chosenDirection = directions[Math.floor(Math.random() * playerTile.directionCount)];
+    printObj('coord', coord.value);
+    printObj('playerTile', playerTile);
+    if (board.validMove(coord, chosenDirection)) {
+        move.directions.push(chosenDirection);
+        debug(chosenDirection);
+    } else {
+        debug(`${chosenDirection} is invalid !`);
     }
     return move;
 }

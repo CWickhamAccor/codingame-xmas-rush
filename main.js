@@ -29,6 +29,14 @@ class Coord {
         const x = this.x < 6 ? this.x + 1 : 0;
         return [x, this.y];
     }
+    getRelativePosition(coord) {
+        const relPos = [];
+        if (coord.x > this.x) { relPos.push(Math.abs(coord.x - this.x) < 3 ? 'LEFT' : 'RIGHT'); }
+        if (coord.x < this.x) { relPos.push(Math.abs(coord.x - this.x) < 3 ? 'RIGHT' : 'LEFT'); }
+        if (coord.y > this.y) { relPos.push(Math.abs(coord.y - this.y) < 3 ? 'UP' : 'DOWN'); }
+        if (coord.y < this.y) { relPos.push(Math.abs(coord.y - this.y) < 3 ? 'DOWN' : 'UP'); }
+        return relPos;
+    }
     toString() {
         return this.value;
     }
@@ -140,8 +148,7 @@ function getItems() {
         const inputs = readline().split(' ');
         const item = {
             name: inputs[0],
-            x: parseInt(inputs[1]),
-            y: parseInt(inputs[2]),
+            coord: new Coord(inputs[1], inputs[2]),
         };
         const playerId = parseInt(inputs[3]);
         playerId ? oppItems.push(item) : myItems.push(item);
@@ -179,8 +186,19 @@ function getMoveAction(gameState) {
     const { board, player } = gameState;
     const coord = player.coord;
     const directions = board.getValidMoves(coord);
+    if (directions.length === 0) {
+        debug('no valid direction');
+        return move;
+    }
     printObj('available directions', directions);
-    const chosenDirection = directions[Math.floor(Math.random() * directions.length)];
+    const relativePos = player.items.map(item => item.coord.getRelativePosition(player.coord));
+    printObj('quest 0 position', relativePos[0]);
+    const goodDirections = directions.filter(dir => relativePos[0].includes(dir));
+    if (goodDirections.length === 0) {
+        debug('no good direction');
+        return move;
+    }
+    const chosenDirection = goodDirections[Math.floor(Math.random() * goodDirections.length)];
     move.directions.push(chosenDirection);
     debug(chosenDirection);
     return move;
@@ -224,8 +242,8 @@ while (true) {
         opponent,
     };
 
-    printObj('gameState', gameState);
-    gameState.board.print();
+    // printObj('gameState', gameState);
+    // gameState.board.print();
 
     think(gameState);
     act(turnType);
